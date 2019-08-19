@@ -197,7 +197,31 @@
             <version>${version.com.github.fge.jackson-coreutils}</version>
         </dependency>
         <!-- /crl and ocsp -->
+        <dependency>
+            <groupId>com.sun.xml.bind</groupId>
+            <artifactId>jaxb-impl</artifactId>
+            <version>2.3.1</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/javax.xml.bind/jaxb-api -->
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>2.3.0-b170201.1204</version>
+        </dependency>
 
+        <!-- https://mvnrepository.com/artifact/javax.activation/activation -->
+        <dependency>
+            <groupId>javax.activation</groupId>
+            <artifactId>activation</artifactId>
+            <version>1.1</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.glassfish.jaxb/jaxb-runtime -->
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>2.3.0-b170127.1453</version>
+        </dependency>
         <!-- This needs to be after the org.bouncycaslte dependencies. The reason is that apacheds-all dependency,
              which is part of wildfly-testsuite-shared module, contains implementation of BouncyCastle provider based
              on older version of BouncyCastle. -->

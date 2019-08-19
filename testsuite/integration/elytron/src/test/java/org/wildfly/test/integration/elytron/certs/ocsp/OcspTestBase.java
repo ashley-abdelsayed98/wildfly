@@ -311,6 +311,9 @@ public class OcspTestBase extends CommonBase {
                 .setPublicKey(intermediateIssuerPublicKey)
                 .setSerialNumber(new BigInteger("6"))
                 .addExtension(new BasicConstraintsExtension(false, true, -1))
+                .addExtension(new AuthorityInformationAccessExtension(Collections.singletonList(
+                        new AccessDescription(OID_AD_OCSP, new GeneralName.URIName(OCSP_RESPONDER_URL))
+                )))
                 .build();
 
         // Generates GOOD certificate with more intermediate certificates referencing the OCSP responder
@@ -337,7 +340,7 @@ public class OcspTestBase extends CommonBase {
         createTemporaryKeyStoreFile(ocspCheckedTooLongChainKeyStore, OCSP_CHECKED_TOO_LONG_CHAIN_FILE, PASSWORD_CHAR);
 
 
-        trustStore.setCertificateEntry("mykey2",intermediateIssuerCertificate); // TODO shall we need this? :/ I would expect that only root one is necessary
+        //trustStore.setCertificateEntry("mykey2",intermediateIssuerCertificate); // TODO shall we need this? :/ I would expect that only root one is necessary
 
         prepareCrlFiles(intermediateIssuerCertificate, issuerSelfSignedX509CertificateAndSigningKey);
 
@@ -349,7 +352,8 @@ public class OcspTestBase extends CommonBase {
     public static void startOcspServer() throws Exception {
         ocspServer = new TestingOcspServer(OCSP_PORT);
         ocspServer.createIssuer(1, issuerCertificate);
-        ocspServer.createIssuer(2, intermediateIssuerCertificate); //TODO - hm, do we need this?
+        ocspServer.createIssuer(2, intermediateIssuerCertificate);
+        ocspServer.createCertificate(3, 1, intermediateIssuerCertificate);
         ocspServer.createCertificate(1, 1, ocspCheckedGoodCertificate);
         ocspServer.createCertificate(2, 1, ocspCheckedRevokedCertificate);
         ocspServer.revokeCertificate(2, 4);
@@ -526,6 +530,8 @@ public class OcspTestBase extends CommonBase {
 
         CredentialReference serverKeyStoreCredRef = CredentialReference.builder().withClearText(PASSWORD).build();
 
+        CredentialReference ocspResponderKeyStoreCredRef = CredentialReference.builder().withClearText(PASSWORD).build();
+
         // Prepare server key-store and key-manager for server ssl context
         Path serverKeyStorePath = Path.builder().withPath(LADYBIRD_FILE.getAbsolutePath()).build();
 
@@ -543,7 +549,15 @@ public class OcspTestBase extends CommonBase {
                 serverKeyStoreCredRef).withType("JKS").withPath(serverTrustStorePath).build();
         elements.add(serverTrustStore);
 
-        Ocsp ocsp = Ocsp.builder().withPreferCrls(false).build();
+        //add ocspResponder key store
+        Path ocspResponderKeyStorePath = Path.builder().withPath(OCSP_RESPONDER_FILE.getAbsolutePath()).build();
+        SimpleKeyStore ocspResponderKeyStore = SimpleKeyStore.builder().withName("ocspResponderKeyStore").withCredentialReference(
+                ocspResponderKeyStoreCredRef).withType("JKS").withPath(ocspResponderKeyStorePath).build();
+        elements.add(ocspResponderKeyStore);
+
+        Ocsp ocsp = Ocsp.builder().withPreferCrls(false).withResponderKeyStore("ocspResponderKeyStore").withResponderCertificate("ocspResponder").build();
+
+        //Ocsp ocsp = Ocsp.builder().withPreferCrls(false).build();
 
         CertificateRevocationList crl =
                 CertificateRevocationList.builder().withPath(CA_BLANK_PEM_CRL.getAbsolutePath()).build();
