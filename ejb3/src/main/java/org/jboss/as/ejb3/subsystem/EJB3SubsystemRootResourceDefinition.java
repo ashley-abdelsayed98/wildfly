@@ -22,16 +22,23 @@
 
 package org.jboss.as.ejb3.subsystem;
 
+import static org.jboss.as.controller.SimpleAttributeDefinitionBuilder.create;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
 
+import java.util.concurrent.ExecutorService;
+
 import org.jboss.as.controller.AbstractAddStepHandler;
 import org.jboss.as.controller.AbstractWriteAttributeHandler;
+import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.ModelVersion;
+import org.jboss.as.controller.ObjectListAttributeDefinition;
+import org.jboss.as.controller.ObjectTypeAttributeDefinition;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationDefinition;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathElement;
+import org.jboss.as.controller.ReloadRequiredWriteAttributeHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleOperationDefinitionBuilder;
@@ -50,9 +57,9 @@ import org.jboss.as.controller.services.path.PathManager;
 import org.jboss.as.ejb3.deployment.processors.EJBDefaultSecurityDomainProcessor;
 import org.jboss.as.ejb3.deployment.processors.merging.MissingMethodPermissionsDenyAccessMergingProcessor;
 import org.jboss.as.ejb3.logging.EjbLogger;
+import org.jboss.as.threads.EnhancedQueueExecutorResourceDefinition;
 import org.jboss.as.threads.ThreadFactoryResolver;
 import org.jboss.as.threads.ThreadsServices;
-import org.jboss.as.threads.UnboundedQueueThreadPoolResourceDefinition;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 
@@ -176,6 +183,23 @@ public class EJB3SubsystemRootResourceDefinition extends SimpleResourceDefinitio
             .setAllowExpression(true)
             .build();
 
+    private static final ObjectTypeAttributeDefinition SERVER_INTERCEPTOR = ObjectTypeAttributeDefinition.Builder.of(EJB3SubsystemModel.SERVER_INTERCEPTOR,
+            create(EJB3SubsystemModel.CLASS, ModelType.STRING, false)
+                    .setAllowExpression(false)
+                    .build(),
+            create(EJB3SubsystemModel.MODULE, ModelType.STRING, false)
+                    .setAllowExpression(false)
+                    .build())
+            .build();
+
+    public static final ObjectListAttributeDefinition SERVER_INTERCEPTORS = ObjectListAttributeDefinition.Builder.of(EJB3SubsystemModel.SERVER_INTERCEPTORS, SERVER_INTERCEPTOR)
+            .setRequired(false)
+            .setAllowExpression(false)
+            .setAllowNull(true)
+            .setMinSize(1)
+            .setMaxSize(Integer.MAX_VALUE)
+            .build();
+
     public static final RuntimeCapability<Void> CLUSTERED_SINGLETON_CAPABILITY =  RuntimeCapability.Builder.of(
             "org.wildfly.ejb3.clustered.singleton", Void.class).build();
 
@@ -213,7 +237,7 @@ public class EJB3SubsystemRootResourceDefinition extends SimpleResourceDefinitio
         this.pathManager = pathManager;
     }
 
-    static final SimpleAttributeDefinition[] ATTRIBUTES = {
+    static final AttributeDefinition[] ATTRIBUTES = {
             DEFAULT_ENTITY_BEAN_INSTANCE_POOL,
             DEFAULT_ENTITY_BEAN_OPTIMISTIC_LOCKING,
             DEFAULT_MDB_INSTANCE_POOL,
@@ -232,7 +256,8 @@ public class EJB3SubsystemRootResourceDefinition extends SimpleResourceDefinitio
             DISABLE_DEFAULT_EJB_PERMISSIONS,
             ENABLE_GRACEFUL_TXN_SHUTDOWN,
             LOG_EJB_EXCEPTIONS,
-            ALLOW_EJB_NAME_REGEX
+            ALLOW_EJB_NAME_REGEX,
+            SERVER_INTERCEPTORS
     };
 
     @Override
@@ -280,6 +305,7 @@ public class EJB3SubsystemRootResourceDefinition extends SimpleResourceDefinitio
             }
         });
         resourceRegistration.registerReadWriteAttribute(ENABLE_GRACEFUL_TXN_SHUTDOWN, null, EnableGracefulTxnShutdownWriteHandler.INSTANCE);
+        resourceRegistration.registerReadWriteAttribute(SERVER_INTERCEPTORS, null,  new ReloadRequiredWriteAttributeHandler(SERVER_INTERCEPTORS));
     }
 
     @Override
@@ -324,8 +350,13 @@ public class EJB3SubsystemRootResourceDefinition extends SimpleResourceDefinitio
         subsystemRegistration.registerSubModel(new TimerServiceResourceDefinition(pathManager));
 
         // subsystem=ejb3/thread-pool=*
-        subsystemRegistration.registerSubModel(UnboundedQueueThreadPoolResourceDefinition.create(EJB3SubsystemModel.THREAD_POOL,
-                new EJB3ThreadFactoryResolver(), EJB3SubsystemModel.BASE_THREAD_POOL_SERVICE_NAME, registerRuntimeOnly));
+        subsystemRegistration.registerSubModel(EnhancedQueueExecutorResourceDefinition.create(
+                PathElement.pathElement(EJB3SubsystemModel.THREAD_POOL),
+                new EJB3ThreadFactoryResolver(),
+                EJB3SubsystemModel.BASE_THREAD_POOL_SERVICE_NAME,
+                registerRuntimeOnly,
+                ThreadsServices.createCapability(EJB3SubsystemModel.BASE_EJB_THREAD_POOL_NAME, ExecutorService.class),
+                false));
 
         // subsystem=ejb3/service=iiop
         subsystemRegistration.registerSubModel(EJB3IIOPResourceDefinition.INSTANCE);
