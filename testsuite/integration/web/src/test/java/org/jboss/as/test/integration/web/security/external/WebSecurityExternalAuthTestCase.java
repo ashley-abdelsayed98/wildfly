@@ -52,7 +52,6 @@ import org.junit.runner.RunWith;
  * @author Anil Saldhana
  */
 @RunWith(Arquillian.class)
-@RunAsClient
 @ServerSetup(ExternalAuthSecurityDomainSetup.class)
 @Category(CommonCriteria.class)
 public class WebSecurityExternalAuthTestCase {
@@ -72,10 +71,10 @@ public class WebSecurityExternalAuthTestCase {
         return war;
     }
 
-    @ArquillianResource
+  /*  @ArquillianResource
     private URL url;
-
-    protected void makeCall(String user, int expectedStatusCode) throws Exception {
+*/
+    protected void makeCall(String user, int expectedStatusCode, URL url) throws Exception {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
 
             HttpGet httpget = new HttpGet(url.toExternalForm() + "secured/");
@@ -96,9 +95,9 @@ public class WebSecurityExternalAuthTestCase {
      *
      * @throws Exception
      */
-    @Test
-    public void testSucessfulAuth() throws Exception {
-        makeCall("anil", 200);
+    @Test @RunAsClient
+    public void testSucessfulAuth(@ArquillianResource URL url) throws Exception {
+        makeCall("anil", 200, url);
     }
 
     /**
@@ -111,8 +110,8 @@ public class WebSecurityExternalAuthTestCase {
      *
      * @throws Exception
      */
-    @Test
-    public void testUnsuccessfulAuth() throws Exception {
-        makeCall("marcus", 403);
+    @Test @RunAsClient
+    public void testUnsuccessfulAuth(@ArquillianResource URL url) throws Exception {
+        makeCall("marcus", 403, url);
     }
 }
