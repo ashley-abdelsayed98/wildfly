@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <authentication-client xmlns="urn:elytron:client:1.5">
+        <authentication-rules>
+            <rule use-configuration="jta">
+                <match-protocol name="http"/>
+            </rule>
+        </authentication-rules>
+        <authentication-configurations>
+            <configuration name="jta">
+                <providers>
+                    <use-service-loader />
+                </providers>
+                <set-user-name name="remoteejbuser"/>
+                <credentials>
+                    <oauth2-bearer-token token-endpoint-uri="http://localhost:50831/token">
+                        <resource-owner-credentials name="jdoe" password="dont_tell_me"/>
+                        <client-credentials client-id="elytron-client" client-secret="dont_tell_me"/>
+                    </oauth2-bearer-token>
+                </credentials>
+            </configuration>
+        </authentication-configurations>
+    </authentication-client>
+</configuration>
